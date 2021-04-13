@@ -1,0 +1,40 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: sans-serif;
+}
+
+input[type=text] {
+    width: 20rem;
+    padding: 10px;
+}
+
+button {
+    background-color: steelblue;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+}
+
+#top {
+    background-color: lightgray;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 1rem;
+    transition: 2s linear;
+    z-index: 1;
+}
+
+#top h1 {
+    margin: 0 0 1rem 0;
+}
+
+#console {
+    position: absolute;
+    top: 8rem;
+}
