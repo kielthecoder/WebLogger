@@ -17,6 +17,8 @@ namespace WebsocketLogger
             {
                 Thread.MaxNumberOfUserThreads = 20;
 
+                CrestronEnvironment.ProgramStatusEventHandler += ProgramEventHandler;
+
                 _log = new WebLogger();
             }
             catch (Exception e)
@@ -37,6 +39,18 @@ namespace WebsocketLogger
             catch (Exception e)
             {
                 ErrorLog.Error("Error in InitializeSystem: {0}", e.Message);
+            }
+        }
+
+        private void ProgramEventHandler(eProgramStatusEventType eventType)
+        {
+            if (eventType == eProgramStatusEventType.Stopping)
+            {
+                if (_log != null)
+                    _log.Stop();
+
+                if (_looper != null)
+                    _looper.Abort();
             }
         }
 
