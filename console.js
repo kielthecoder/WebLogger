@@ -112,7 +112,7 @@ function onMessage(event)
                             
             // set receiving text
             const consoleElement = document.querySelector('#console');
-            consoleElement.innerHTML += value;
+            consoleElement.innerHTML += value + "\n";
         }
     }
 }  

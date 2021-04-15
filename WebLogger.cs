@@ -1,28 +1,72 @@
 ﻿using System;
 using System.Collections.Generic;
 using Crestron.SimplSharp;
-using WebsocketServer;
+using WebSocketSharp;
+using WebSocketSharp.Server;
 
 namespace WebsocketLogger
 {
+    class WebLoggerService : WebSocketBehavior
+    {
+        private List<string> _backlog;
+
+        public WebLoggerService(List<string> backlog)
+        {
+            _backlog = backlog;
+        }
+
+        protected override void OnOpen()
+        {
+            SendSerial(1, "-- CONNECTED --");
+
+            if (_backlog.Count > 0)
+            {
+                foreach (var msg in _backlog)
+                    SendSerial(1, msg);
+            }
+
+            _backlog.Clear();
+        }
+
+        protected override void OnClose(CloseEventArgs e)
+        {
+        }
+
+        public void WriteLine(string msg, params object[] args)
+        {
+            var text = String.Format(msg, args);
+
+            if (this.State == WebSocketState.Open)
+                SendSerial(1, text);
+            else
+                _backlog.Add(text);
+        }
+
+        protected void SendSerial(ushort channel, string text)
+        {
+            // Encode data to match CCI's format
+            Send(String.Format("STRING[{0},{1}]", channel, text));
+        }
+    }
+
     class WebLogger
     {
-        private WebsocketSrvr _server;
-        private bool _clientConnected;
-
+        private WebSocketServer _server;
+        private WebLoggerService _logger;
         private List<string> _backlog;
 
         public WebLogger()
         {
             try
             {
-                _server = new WebsocketSrvr();
-                _server.Initialize(54321);
-                _server.OnClientConnectedChange += OnClientConnected;
-
                 _backlog = new List<string>();
+                _server = new WebSocketServer(54321);
 
-                _clientConnected = false;
+                _server.AddWebSocketService<WebLoggerService>("/", () =>
+                {
+                    _logger = new WebLoggerService(_backlog);
+                    return _logger;
+                });
             }
             catch (Exception e)
             {
@@ -32,50 +76,26 @@ namespace WebsocketLogger
 
         public void Start()
         {
-            _server.StartServer();
+            _server.Start();
         }
 
         public void Stop()
         {
-            _server.StopServer();
+            _server.Stop();
         }
 
         public void WriteLine(string msg, params object[] args)
         {
-            var text = String.Format(msg, args) + "\n";
-
-            if (_clientConnected)
+            try
             {
-                _server.SetIndirectTextSignal(1, text);
+                if (_logger == null)
+                    _backlog.Add(String.Format(msg, args));
+                else
+                    _logger.WriteLine(msg, args);
             }
-            else
+            catch (Exception e)
             {
-                _backlog.Add(text);
-            }
-        }
-
-        private void OnClientConnected(ushort state)
-        {
-            if (state == 0)
-            {
-                // Disconnected
-                _clientConnected = false;
-            }
-            else
-            {
-                // Connected
-                _clientConnected = true;
-                _server.SetIndirectTextSignal(1, "\n-- CONNECTED --\n");
-
-                if (_backlog.Count > 0)
-                {
-                    foreach (var msg in _backlog)
-                    {
-                        _server.SetIndirectTextSignal(1, msg);
-                    }
-                }
-
-                _backlog.Clear();
+                ErrorLog.Error("Exception in WriteLine: {0}", e.Message);
             }
         }
     }
